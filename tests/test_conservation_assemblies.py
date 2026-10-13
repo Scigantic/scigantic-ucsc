@@ -51,3 +51,8 @@ def test_live_bad_inputs_are_readable_errors():
     with pytest.raises(ValueError, match="no hg38 alignment"):
         u.multiz_blocks("chrZ", 0, 10)
     assert u.conservation("1", 1_000_000, 1_000_010).shape == (10,)
+
+
+def test_max_bases_checked_before_any_network():
+    with pytest.raises(ValueError, match="max_bases"):
+        u.conservation("chr1", 0, 20_000_000)

@@ -32,3 +32,17 @@ def test_live_marmoset():
     assert 0 < len(intact) <= len(genes)
     with pytest.raises(ValueError, match="no TOGA"):
         toga.toga_key("GCF_000000000.1")
+
+
+def test_open_remote_times_out_even_when_the_open_blocks_the_gil(monkeypatch):
+    import time
+
+    from scigantic_ucsc import _http
+
+    # A busy loop holds the GIL the way pyBigWig.open does; a thread-based
+    # timeout would never fire here.
+    monkeypatch.setattr(_http, "_PROBE", "while True: pass\n")
+    t = time.time()
+    with pytest.raises(TimeoutError, match="took longer"):
+        _http.open_remote("never.bb", timeout=1.0)
+    assert time.time() - t < 10

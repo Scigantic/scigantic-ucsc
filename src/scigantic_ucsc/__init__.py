@@ -4,7 +4,7 @@ from .conservation import TRACKS, chromosomes, conservation, conservation_bins
 from .toga import Gene, toga_chromosomes, toga_genes
 from .multiz import Block, Row, alignment as multiz_alignment, blocks as multiz_blocks
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __all__ = [
     "Assembly", "Block", "Gene", "Row", "TRACKS",

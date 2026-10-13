@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from ._http import url
+from ._http import open_remote
 from ._names import chrom_name
 
 # track name -> published path in the bucket. hg38 only: these are the files
@@ -27,18 +27,13 @@ _local = threading.local()
 
 
 def _open(track: str) -> Any:
-    import pyBigWig
-
     try:
         key = TRACKS[track]
     except KeyError:
         raise ValueError(f"unknown track {track!r}; choose from {sorted(TRACKS)}") from None
     handles = _local.__dict__.setdefault("handles", {})
     if track not in handles:
-        bw = pyBigWig.open(url(key))
-        if bw is None:
-            raise OSError(f"could not open {url(key)}")
-        handles[track] = bw
+        handles[track] = open_remote(key)
     return handles[track]
 
 
@@ -54,19 +49,29 @@ def _check(bw: Any, chrom: str, start: int, end: int) -> str:
     return chrom
 
 
+MAX_BASES = 10_000_000
+
+
 def conservation(
-    chrom: str, start: int, end: int, track: str = "phyloP447way"
+    chrom: str, start: int, end: int, track: str = "phyloP447way", max_bases: int = MAX_BASES
 ) -> npt.NDArray[np.float64]:
     """Score for every base in chrom:start-end (0-based, end exclusive).
 
-    Bases the track has no value for come back as NaN.
+    Bases the track has no value for come back as NaN. Windows longer than
+    `max_bases` raise; use `conservation_bins` for a summary of a long region.
     """
     if end <= start:
         raise ValueError("end must be greater than start")
+    if end - start > max_bases:
+        raise ValueError(
+            f"{end - start:,} bases is over max_bases={max_bases:,}; "
+            "raise max_bases or use conservation_bins"
+        )
     bw = _open(track)
     chrom = _check(bw, chrom, start, end)
-    values = bw.values(chrom, start, end)
-    return np.asarray(values, dtype=np.float64)
+    # numpy=True avoids building a Python list of floats first, which held
+    # about five times the array's size in memory at peak.
+    return np.asarray(bw.values(chrom, start, end, numpy=True), dtype=np.float64)
 
 
 def conservation_bins(

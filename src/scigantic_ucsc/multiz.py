@@ -22,7 +22,8 @@ from ._names import chrom_name
 
 PREFIX = "gbdb/hg38/multiz100way/defaultMaf"
 _PROBE = 1 << 16
-_READ = 1 << 20
+_READ_FIRST = 1 << 17
+_READ_MAX = 1 << 20
 
 _HEADER = re.compile(r"(?m)^a score")
 _S_LINE = re.compile(r"\ns (\S+)\s+(\d+)\s+(\d+)\s+([+-])\s+(\d+)\s+(\S+)")
@@ -131,11 +132,13 @@ def blocks(
     out: list[Block] = []
     carry = ""
     fetched = 0
+    step = _READ_FIRST
     done = False
     while off < n and not done:
         if fetched >= max_bytes:
             raise ValueError(f"window needs more than {max_bytes} bytes of {key}; narrow it")
-        chunk = read(key, off, min(off + _READ, n) - 1).decode("latin1")
+        chunk = read(key, off, min(off + step, n) - 1).decode("latin1")
+        step = min(step * 2, _READ_MAX)
         fetched += len(chunk)
         off += len(chunk)
         text = carry + chunk

@@ -79,14 +79,9 @@ _local = threading.local()
 
 
 def _open(accession: str) -> Any:
-    import pyBigWig
-
     handles = _local.__dict__.setdefault("handles", {})
     if accession not in handles:
-        bb = pyBigWig.open(_http.url(toga_key(accession)))
-        if bb is None:
-            raise OSError(f"could not open the TOGA track for {accession}")
-        handles[accession] = bb
+        handles[accession] = _http.open_remote(toga_key(accession))
     return handles[accession]
 
 

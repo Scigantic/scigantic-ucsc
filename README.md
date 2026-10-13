@@ -50,9 +50,10 @@ Conservation tracks: `phyloP100way`, `phastCons100way`, `phyloP447way` (default)
 Taken on 2026-10-13 from a single machine, one request at a time.
 
 - Conservation: opening a bigWig took about 1 s the first time. A 20-base query took 0.13 s, and a mean over 10 kb took 0.54 s.
-- Multiz on chr1 (a 4.9 GB file): locating a position took 16 requests and 4.2 s.
+- Multiz on chr1 (a 4.9 GB file): a 300 bp window took 17 requests, 1.2 MB and 3.6 s. A 2 Mb window (80,022 blocks) took 62 requests, 47 MB and 16.4 s.
 - TOGA on one marmoset assembly: 239 genes from a 5 Mb region took 1.4 s.
-- Multiz search correctness: the position search was compared with a full parse of `chrY.maf` (558,379 blocks). Over 300 random windows the two returned identical block lists.
+- Multiz search correctness: the position search was compared with a full parse of `chrY.maf` (558,379 blocks) and `chr21.maf` (1,404,006 blocks), 400 random windows each, widths from 1 bp to 200 kb. The block lists were identical in all 800 comparisons.
+- All five conservation tracks returned data for 40 random 1 kb windows each. Between 8% and 17% of bases had no score (NaN).
 - The mammals hub listed 1,006 assemblies on 2026-10-13.
 
 ## Limits
@@ -60,8 +61,10 @@ Taken on 2026-10-13 from a single machine, one request at a time.
 - The multiz files that can be read this way contain nine species: hg38, rheMac3, canFam3, loxAfr3, galGal4, mm10, xenTro7, danRer10 and petMar2 (the species the UCSC browser shows by default). The full 100-way MAFs under `goldenPath/hg38/multiz100way/maf/` are plain gzip, which cannot be read from the middle, so this package does not use them.
 - The Cactus 241-way and 447-way alignments are HAL files of about 0.8 and 1.2 TB on UCSC's own server, not in this bucket. This package does not read them. Only their conservation scores are read, from the bigWig files UCSC publishes.
 - Conservation and multiz cover hg38 only.
+- Base-level conservation reads are slow for long windows: a 10 Mb window took 97.5 s (about 10 s per megabase) and returns an 80 MB array. `conservation` raises above `max_bases` (10 million by default). `conservation_bins` summarizes a long region and is the intended call for that.
+- Parallel threads do not speed up `conservation`: 300 queries over 32 threads took 108 s, about the same as running them one at a time. Use processes for parallelism.
 - TOGA annotations exist for a minority of assemblies. In a random sample of 20 mammal and 20 bird assemblies, 2 of each had one. `toga_genes` raises `ValueError` if an assembly has none. Coordinates are on the query assembly and use its own sequence names, listed by `toga_chromosomes(accession)`.
-- TOGA reads over 2 Mb windows were slow on some assemblies: the 20-assembly mammal sample took 382 s in total, against 8 s for the bird sample. The cause has not been identified.
+- One TOGA file in the sampled mammal assemblies (GCA_001685075.1) did not open within 150 s, twice. Its sequence count (58,423) and file size (203 MB) are similar to assemblies that open in under a second, and the cause has not been identified. The first open of each remote bigWig or bigBed runs in a subprocess and raises `TimeoutError` after 60 s.
 - `multiz_alignment` projects onto hg38. Insertions relative to hg38 are dropped, a species with a gap gets `-`, and a base that no block covers is `.` in every row.
 - `multiz_blocks` raises if a window needs more than `max_bytes` (64 MB by default) of a file.
 - Chromosome names `1`, `chr1`, `CHR1` and `MT` are normalized to UCSC's spelling. A name that is not in hg38, a negative start, or a window past the end of the chromosome raises `ValueError`.
