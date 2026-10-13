@@ -1,26 +1,26 @@
 # scigantic-ucsc
 
-Read UCSC Genome Browser conservation scores, multiz alignments and assembly lists straight from UCSC's public S3 bucket (`s3://genome-browser`). Nothing is downloaded first.
+Python readers for four kinds of data in UCSC's public S3 bucket (`s3://genome-browser`, us-east-1, anonymous access): per-base conservation scores, hg38 multiz alignment blocks, TOGA gene annotations, and the assembly lists of UCSC's genome hubs. Each function reads only the byte ranges it needs over HTTPS, so no file is downloaded in full.
 
 ```python
 import scigantic_ucsc as ucsc
 
-# per-base phyloP from the 447-way mammal alignment, hg38
-scores = ucsc.conservation("chr17", 43_044_295, 43_044_395)
+# phyloP scores, hg38, 0-based half-open coordinates
+scores = ucsc.conservation("chr17", 43_044_295, 43_044_395, track="phyloP447way")
 
-# mean score in 50 windows across a 10 kb region
+# mean score in 50 equal windows
 bins = ucsc.conservation_bins("chr17", 43_044_295, 43_054_295, bins=50)
 
-# alignment blocks overlapping a region, human plus selected species
+# multiz alignment blocks overlapping a region
 blocks = ucsc.multiz_blocks("chr1", 1_000_000, 1_000_300, species=["mm10", "canFam3"])
 
-# the same region projected onto hg38 coordinates: one string per species
+# the same region as one string per species, one column per hg38 base
 aln = ucsc.multiz_alignment("chr1", 1_000_000, 1_000_100, species=["mm10", "canFam3"])
 
-# the 1,006 mammal assemblies UCSC lists
+# assemblies listed in the mammals hub
 ucsc.find("marmoset")
 
-# TOGA gene models and loss status on any assembly in a hub
+# TOGA genes classified "Lost" in a region of a query assembly
 genes = ucsc.toga_genes("GCF_001458135.1", "CZRN01000001", 0, 5_000_000, status="Lost")
 ```
 
@@ -30,27 +30,43 @@ genes = ucsc.toga_genes("GCF_001458135.1", "CZRN01000001", 0, 5_000_000, status=
 $ pip install scigantic-ucsc
 ```
 
-## What it reads
+Requires Python 3.10 or later, numpy and pyBigWig.
 
-| Function | Source in the bucket | How |
+## Functions and sources
+
+| Function | Reads | Method |
 |---|---|---|
-| `conservation`, `conservation_bins` | `goldenPath/hg38/phyloP*way`, `phastCons100way` bigWig files | pyBigWig range reads, about 0.1 to 0.5 s per query |
-| `multiz_blocks` | `gbdb/hg38/multiz100way/defaultMaf/<chrom>.maf` | binary search over byte-range reads, about 16 requests and a few seconds |
-| `multiz_alignment` | same | the blocks above, projected onto hg38 so every row has one column per base |
-| `assemblies`, `find` | `hubs/<group>/assemblyList.json` | one small JSON file, cached |
-| `toga_genes`, `toga_chromosomes` | `hubs/<GCF or GCA>/.../<accession>/bbi/*TOGA*.bb` | bigBed range reads, about a second per region |
+| `conservation`, `conservation_bins` | bigWig files under `goldenPath/hg38/` | pyBigWig remote range reads |
+| `multiz_blocks`, `multiz_alignment` | `gbdb/hg38/multiz100way/defaultMaf/<chrom>.maf` | binary search by position over HTTP byte ranges; the files have no index |
+| `assemblies`, `find` | `hubs/<group>/assemblyList.json` | one JSON file per group, cached in memory |
+| `toga_genes`, `toga_chromosomes` | the `*TOGA*.bb` bigBed in `hubs/<GCF or GCA>/.../<accession>/bbi/` | pyBigWig remote range reads; the file is found by listing the assembly's `bbi/` prefix |
 
-Tracks: `phyloP100way`, `phastCons100way`, `phyloP447way` (default), `phyloP447wayPrimates`, `phyloP447wayLRT`. All are hg38.
+Conservation tracks: `phyloP100way`, `phastCons100way`, `phyloP447way` (default), `phyloP447wayPrimates`, `phyloP447wayLRT`. All are hg38.
+
+`toga_genes` returns the reference transcript, the region on the query assembly, UCSC's gene classification (`status`) and the chain and intactness scores stored in the file. It omits the four columns that hold HTML and SVG for the browser popup.
+
+## Measurements
+
+Taken on 2026-10-13 from a single machine, one request at a time.
+
+- Conservation: opening a bigWig took about 1 s the first time. A 20-base query took 0.13 s, and a mean over 10 kb took 0.54 s.
+- Multiz on chr1 (a 4.9 GB file): locating a position took 16 requests and 4.2 s.
+- TOGA on one marmoset assembly: 239 genes from a 5 Mb region took 1.4 s.
+- Multiz search correctness: the position search was compared with a full parse of `chrY.maf` (558,379 blocks). Over 300 random windows the two returned identical block lists.
+- The mammals hub listed 1,006 assemblies on 2026-10-13.
 
 ## Limits
 
-- `multiz_blocks` covers nine species, not the full 100-way. UCSC's `defaultMaf` files hold only the species the browser shows by default: human, rhesus, dog, elephant, chicken, mouse, frog, zebrafish and sea lamprey. The full 100-way MAFs are plain gzip, which cannot be sliced without reading from the start, so they are not used.
-- `toga_genes` coordinates are on the query assembly, not on hg38, and use that assembly's own sequence names (scaffold ids for most). `toga_chromosomes(accession)` lists them. The columns that hold HTML and SVG for the browser popup are left out. TOGA exists for only a minority of assemblies: in a random sample of 20 mammal and 20 bird assemblies, 2 of each had it. `toga_genes` raises if an assembly has none.
-- Chromosome names are forgiving (`1`, `chr1`, `MT` all work), but a name that is not in hg38, or a window outside the chromosome, raises a `ValueError` that says so.
-- The 241-way and 447-way Cactus alignments are distributed as HAL files (about 0.8 and 1.2 TB) on UCSC's own server, not in this bucket. This package does not read them. The 447-way conservation scores are here because UCSC publishes them as bigWig.
-- hg38 only for conservation and alignments. `assemblies` works for any hub group UCSC publishes (`mammals`, `birds`, `fish`, `VGP`, and others).
-- A window that needs more than `max_bytes` (64 MB by default) of a MAF raises instead of reading on. Narrow the window.
+- The multiz files that can be read this way contain nine species: hg38, rheMac3, canFam3, loxAfr3, galGal4, mm10, xenTro7, danRer10 and petMar2 (the species the UCSC browser shows by default). The full 100-way MAFs under `goldenPath/hg38/multiz100way/maf/` are plain gzip, which cannot be read from the middle, so this package does not use them.
+- The Cactus 241-way and 447-way alignments are HAL files of about 0.8 and 1.2 TB on UCSC's own server, not in this bucket. This package does not read them. Only their conservation scores are read, from the bigWig files UCSC publishes.
+- Conservation and multiz cover hg38 only.
+- TOGA annotations exist for a minority of assemblies. In a random sample of 20 mammal and 20 bird assemblies, 2 of each had one. `toga_genes` raises `ValueError` if an assembly has none. Coordinates are on the query assembly and use its own sequence names, listed by `toga_chromosomes(accession)`.
+- TOGA reads over 2 Mb windows were slow on some assemblies: the 20-assembly mammal sample took 382 s in total, against 8 s for the bird sample. The cause has not been identified.
+- `multiz_alignment` projects onto hg38. Insertions relative to hg38 are dropped, a species with a gap gets `-`, and a base that no block covers is `.` in every row.
+- `multiz_blocks` raises if a window needs more than `max_bytes` (64 MB by default) of a file.
+- Chromosome names `1`, `chr1`, `CHR1` and `MT` are normalized to UCSC's spelling. A name that is not in hg38, a negative start, or a window past the end of the chromosome raises `ValueError`.
+- The tests that read the live bucket are skipped unless `SCIGANTIC_UCSC_LIVE=1` is set, so CI does not depend on UCSC or AWS.
 
-## Data
+## Data and citation
 
-The data belongs to UCSC and the groups that produced each track. Cite the Zoonomia consortium for the 241-way and 447-way scores, and the UCSC Genome Browser for the rest.
+The data is produced by UCSC and by the groups behind each track. The track description pages on genome.ucsc.edu give the citation for each. This package is not affiliated with UCSC.
