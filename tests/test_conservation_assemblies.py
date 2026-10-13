@@ -56,3 +56,18 @@ def test_live_bad_inputs_are_readable_errors():
 def test_max_bases_checked_before_any_network():
     with pytest.raises(ValueError, match="max_bases"):
         u.conservation("chr1", 0, 20_000_000)
+
+
+def test_tracks_can_be_absolute_urls():
+    from scigantic_ucsc import _http
+    assert "phyloP241way" in u.TRACKS
+    assert _http.url(u.TRACKS["phyloP241way"]) == u.TRACKS["phyloP241way"]
+    assert _http.url("goldenPath/x.bw") == "https://genome-browser.s3.amazonaws.com/goldenPath/x.bw"
+
+
+@live
+def test_live_phylop_241way():
+    ch = u.chromosomes("phyloP241way")
+    assert ch["chr17"] == 83_257_441          # hg38
+    v = u.conservation("chr17", 43_044_295, 43_044_305, track="phyloP241way")
+    assert v.shape == (10,) and np.isfinite(v).any()

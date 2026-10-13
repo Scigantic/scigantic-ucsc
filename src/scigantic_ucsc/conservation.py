@@ -10,9 +10,14 @@ import numpy.typing as npt
 from ._http import open_remote
 from ._names import chrom_name
 
-# track name -> published path in the bucket. hg38 only: these are the files
-# UCSC publishes under goldenPath/hg38.
+# track name -> published path in the bucket, or an absolute URL for a file
+# hosted elsewhere. hg38 only: the bucket paths are the files UCSC publishes
+# under goldenPath/hg38, and the 241-way file is scored on the human assembly
+# of the Zoonomia alignment (its chr17 length is hg38's, 83,257,441).
 TRACKS: dict[str, str] = {
+    # Hosted on UCSC's cgl server, not in the S3 bucket. 21.9 GB; the server
+    # accepts range requests, so it is read in place like the others.
+    "phyloP241way": "https://cgl.gi.ucsc.edu/data/cactus/241-mammalian-2020v2.phylop-Homo_sapiens.bigWig",
     "phyloP100way": "goldenPath/hg38/phyloP100way/hg38.phyloP100way.bw",
     "phastCons100way": "goldenPath/hg38/phastCons100way/hg38.phastCons100way.bw",
     "phyloP447way": "goldenPath/hg38/phyloP447way/hg38.phyloP447way.bw",

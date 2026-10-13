@@ -11,6 +11,9 @@ _RETRIES = 3
 
 
 def url(key: str) -> str:
+    """A bucket key, or an absolute URL for the few files hosted elsewhere."""
+    if key.startswith(("https://", "http://")):
+        return key
     return f"{BASE}/{key.lstrip('/')}"
 
 
