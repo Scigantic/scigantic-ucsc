@@ -45,7 +45,7 @@ Tracks: `phyloP100way`, `phastCons100way`, `phyloP447way` (default), `phyloP447w
 ## Limits
 
 - `multiz_blocks` covers nine species, not the full 100-way. UCSC's `defaultMaf` files hold only the species the browser shows by default: human, rhesus, dog, elephant, chicken, mouse, frog, zebrafish and sea lamprey. The full 100-way MAFs are plain gzip, which cannot be sliced without reading from the start, so they are not used.
-- `toga_genes` coordinates are on the query assembly, not on hg38, and use that assembly's own sequence names (scaffold ids for most). `toga_chromosomes(accession)` lists them. The columns that hold HTML and SVG for the browser popup are left out. TOGA is not available for every assembly, and `toga_genes` raises if there is none.
+- `toga_genes` coordinates are on the query assembly, not on hg38, and use that assembly's own sequence names (scaffold ids for most). `toga_chromosomes(accession)` lists them. The columns that hold HTML and SVG for the browser popup are left out. TOGA exists for only a minority of assemblies: in a random sample of 20 mammal and 20 bird assemblies, 2 of each had it. `toga_genes` raises if an assembly has none.
 - Chromosome names are forgiving (`1`, `chr1`, `MT` all work), but a name that is not in hg38, or a window outside the chromosome, raises a `ValueError` that says so.
 - The 241-way and 447-way Cactus alignments are distributed as HAL files (about 0.8 and 1.2 TB) on UCSC's own server, not in this bucket. This package does not read them. The 447-way conservation scores are here because UCSC publishes them as bigWig.
 - hg38 only for conservation and alignments. `assemblies` works for any hub group UCSC publishes (`mammals`, `birds`, `fish`, `VGP`, and others).
