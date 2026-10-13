@@ -61,6 +61,8 @@ def conservation(
 
     Bases the track has no value for come back as NaN.
     """
+    if end <= start:
+        raise ValueError("end must be greater than start")
     bw = _open(track)
     chrom = _check(bw, chrom, start, end)
     values = bw.values(chrom, start, end)
@@ -71,6 +73,8 @@ def conservation_bins(
     chrom: str, start: int, end: int, bins: int = 100, track: str = "phyloP447way"
 ) -> npt.NDArray[np.float64]:
     """Mean score in `bins` equal windows across chrom:start-end. NaN where empty."""
+    if end <= start:
+        raise ValueError("end must be greater than start")
     bw = _open(track)
     chrom = _check(bw, chrom, start, end)
     out = bw.stats(chrom, start, end, type="mean", nBins=bins)
