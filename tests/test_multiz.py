@@ -95,3 +95,26 @@ def test_alignment_marks_uncovered_bases():
     gap_a, gap_b = SPANS[1000][1], SPANS[1001][0]
     a = multiz.alignment("chr1", gap_a - 3, gap_a + (gap_b - gap_a) + 3, _read=_read, _size=len(DATA))
     assert "." in a["hg38"] and a["hg38"].count(".") == gap_b - gap_a
+
+
+def test_source_selects_the_file_and_is_validated():
+    seen = []
+
+    def rd(key, a, b):
+        seen.append(key)
+        return DATA[a:b + 1]
+
+    multiz.blocks("chr1", SPANS[3][0], SPANS[3][1], _read=rd, _size=len(DATA))
+    multiz.blocks("chr1", SPANS[3][0], SPANS[3][1], source="full", _read=rd, _size=len(DATA))
+    assert seen[0].startswith("gbdb/hg38/multiz100way/defaultMaf/")
+    assert any(k.startswith("gbdb/hg38/multiz100way/maf/") for k in seen)
+    with pytest.raises(ValueError, match="unknown source"):
+        multiz.blocks("chr1", 0, 10, source="nope", _read=rd, _size=len(DATA))
+
+
+@pytest.mark.live
+@pytest.mark.skipif(not os.environ.get("SCIGANTIC_UCSC_LIVE"), reason="live bucket")
+def test_live_full_alignment_has_many_species():
+    bl = multiz.blocks("chrM", 0, 16_000, source="full")
+    species = {r.species for b in bl for r in b.rows}
+    assert "hg38" in species and len(species) > 50

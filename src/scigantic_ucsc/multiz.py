@@ -1,13 +1,14 @@
 """Slice the hg38 multiz alignment by position without downloading a chromosome.
 
-UCSC publishes the alignment as one uncompressed MAF per chromosome under
-gbdb/hg38/multiz100way/defaultMaf. A MAF is sorted by reference position and
-has no index, so a position is found by binary search over byte-range reads:
-about 16 requests for chr1, a few seconds.
+UCSC publishes the alignment as one uncompressed MAF per chromosome in two
+places under gbdb/hg38/multiz100way: defaultMaf (the nine species the browser
+shows by default: human, rhesus, dog, elephant, chicken, mouse, frog, zebrafish,
+sea lamprey) and maf (the full 100-way, about nine times larger, for example
+70 GB for chr1). A MAF is sorted by reference position and has no index, so a
+position is found by binary search over byte-range reads: about 16 requests for
+the chr1 defaultMaf file, a few seconds.
 
-defaultMaf holds only the nine species the browser shows by default (human,
-rhesus, dog, elephant, chicken, mouse, frog, zebrafish, sea lamprey), not the
-full 100. The full 100-way files under goldenPath are plain gzip and cannot be
+The copies under goldenPath/hg38/multiz100way/maf are plain gzip and cannot be
 seeked, so they are not used here.
 """
 from __future__ import annotations
@@ -20,7 +21,11 @@ from typing import Callable, Iterable
 from . import _http
 from ._names import chrom_name
 
-PREFIX = "gbdb/hg38/multiz100way/defaultMaf"
+SOURCES = {
+    "default": "gbdb/hg38/multiz100way/defaultMaf",
+    "full": "gbdb/hg38/multiz100way/maf",
+}
+PREFIX = SOURCES["default"]
 _PROBE = 1 << 16
 _READ_FIRST = 1 << 17
 _READ_MAX = 1 << 20
@@ -105,6 +110,7 @@ def blocks(
     end: int,
     species: Iterable[str] | None = None,
     max_bytes: int = 64 << 20,
+    source: str = "default",
     *,
     _read: Reader | None = None,
     _size: int | None = None,
@@ -113,12 +119,16 @@ def blocks(
 
     Blocks are returned whole, so they can extend past the requested window.
     `species` keeps only those rows (the human reference row is always kept).
+    `source` is "default" (nine species) or "full" (the 100-way, with many more
+    rows per block, so windows cost roughly nine times the bytes).
     Raises if the window needs more than `max_bytes` of the file.
     """
     if end <= start:
         raise ValueError("end must be greater than start")
+    if source not in SOURCES:
+        raise ValueError(f"unknown source {source!r}; choose from {sorted(SOURCES)}")
     chrom = chrom_name(chrom)
-    key = f"{PREFIX}/{chrom}.maf"
+    key = f"{SOURCES[source]}/{chrom}.maf"
     read = _read or _http.get_range
     try:
         n = _size if _size is not None else _http.size(key)
@@ -171,6 +181,7 @@ def alignment(
     end: int,
     species: Iterable[str] | None = None,
     max_bytes: int = 64 << 20,
+    source: str = "default",
     **kw: object,
 ) -> dict[str, str]:
     """Species -> aligned string of exactly end-start columns, one per hg38 base.
@@ -179,7 +190,7 @@ def alignment(
     hg38 are dropped, a species with a gap gets '-', and a base that no block
     covers is '.' in every row. Soft-masking (lowercase) is kept.
     """
-    bl = blocks(chrom, start, end, species=species, max_bytes=max_bytes, **kw)  # type: ignore[arg-type]
+    bl = blocks(chrom, start, end, species=species, max_bytes=max_bytes, source=source, **kw)  # type: ignore[arg-type]
     width = end - start
     names: list[str] = ["hg38"]
     for b in bl:

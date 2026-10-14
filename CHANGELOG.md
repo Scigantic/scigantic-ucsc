@@ -2,7 +2,11 @@
 
 All notable changes to this project are documented here. Versions correspond to PyPI releases.
 
-## 0.2.0 - unreleased
+## 0.2.1 - unreleased
+
+- `multiz_blocks` and `multiz_alignment` take `source="full"` to read the full 100-way alignment (`gbdb/hg38/multiz100way/maf/`), not only the nine-species `defaultMaf`. Earlier READMEs said the full alignment could not be read; that was wrong. The uncompressed per-chromosome MAFs under `gbdb` have the same sorted, unindexed layout, and the same search works.
+
+## 0.2.0 - 2026-10-14
 
 - New conservation track `phyloP241way`: the Zoonomia 241-way phyloP scores on the human assembly, read by range from UCSC's cgl server (`cgl.gi.ucsc.edu`), not the S3 bucket. A track can now be an absolute URL.
 
