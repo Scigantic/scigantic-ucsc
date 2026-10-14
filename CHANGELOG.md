@@ -2,8 +2,9 @@
 
 All notable changes to this project are documented here. Versions correspond to PyPI releases.
 
-## 0.2.1 - unreleased
+## 0.3.0 - unreleased
 
+- `multiz447_blocks` and `multiz447_alignment`: slice the Cactus 447-way alignment (447 species, hg38 reference) by position from UCSC's cgl server using its taffy `.tai` index and bgzip range reads. Two variants, `single` (default) and `all`.
 - `multiz_blocks` and `multiz_alignment` take `source="full"` to read the full 100-way alignment (`gbdb/hg38/multiz100way/maf/`), not only the nine-species `defaultMaf`. Earlier READMEs said the full alignment could not be read; that was wrong. The uncompressed per-chromosome MAFs under `gbdb` have the same sorted, unindexed layout, and the same search works.
 
 ## 0.2.0 - 2026-10-14

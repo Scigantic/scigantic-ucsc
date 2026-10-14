@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scigantic-ucsc"
-version = "0.2.1"
+version = "0.3.0"
 description = "Read UCSC Genome Browser conservation scores, multiz alignments, TOGA gene annotations and assembly lists straight from UCSC's public S3 bucket, without downloading the files."
 readme = "README.md"
 requires-python = ">=3.10"
