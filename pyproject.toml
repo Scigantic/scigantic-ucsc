@@ -17,8 +17,11 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Typing :: Typed",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
 ]
 
 dependencies = [
@@ -33,6 +36,7 @@ dev = ["pytest>=7", "mypy>=1.10"]
 Homepage = "https://scigantic.com"
 Repository = "https://github.com/Scigantic/scigantic-ucsc"
 Issues = "https://github.com/Scigantic/scigantic-ucsc/issues"
+Documentation = "https://github.com/Scigantic/scigantic-ucsc#readme"
 
 [tool.setuptools.packages.find]
 where = ["src"]
