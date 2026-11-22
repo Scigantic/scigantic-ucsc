@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+title: scigantic-ucsc
+abstract: "Read UCSC Genome Browser conservation scores, multiz alignments, TOGA gene annotations and assembly lists straight from UCSC's public S3 bucket, without downloading the files."
+authors:
+  - name: Scigantic
+    website: https://scigantic.com
+repository-code: https://github.com/Scigantic/scigantic-ucsc
+url: https://pypi.org/project/scigantic-ucsc/
+license: MIT-0
+keywords:
+  - "ucsc"
+  - "genome-browser"
+  - "comparative-genomics"
+  - "phylop"
+  - "multiz"
+  - "bigwig"
+version: "0.3.0"
+date-released: '2026-10-14'
